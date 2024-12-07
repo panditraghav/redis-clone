@@ -24,7 +24,16 @@ static int32_t read_full(int fd, char *buf, size_t n) {
   while (n > 0) {
     ssize_t rv = read(fd, buf, n);
     if (rv <= 0) {
-      return -1; // Error or unexpected EOF
+      if (rv == -1 && errno == EINTR) {
+        /*
+         * read can also be interrupted by a signal because it must wait if the
+         * buffer is empty. In this case, 0 bytes are read, but the return value
+         * is -1 and errno is EINTR. This is not an error.
+         */
+      } else {
+        msg("EOF error");
+        return -1;
+      }
     }
     assert((size_t)rv <= n);
     n -= (size_t)rv;
