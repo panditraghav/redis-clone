@@ -62,7 +62,8 @@ static int32_t read_full(int connfd, char *buf, size_t n) {
   return 0;
 }
 
-static int32_t query(int fd, char *text) {
+static int32_t send_request(int fd, const char *text) {
+
   uint32_t len = (uint32_t)strlen(text);
 
   if (len > k_max_msg) {
@@ -77,9 +78,14 @@ static int32_t query(int fd, char *text) {
     return error;
   }
 
+  return 0;
+}
+
+static int32_t read_response(int fd) {
   // Reading incoming message
   char rbuf[4 + k_max_msg + 1];
 
+  uint32_t len;
   errno = 0;
   int32_t err = read_full(fd, rbuf, 4);
   if (err) {
@@ -122,19 +128,22 @@ int main() {
     die("connect");
   }
 
-  int32_t err = query(fd, (char *)"Hello 1");
-  if (err) {
-    goto L_DONE;
+  const char *query_list[3] = {"Hello 1", "Hello 2", "Hello 3"};
+
+  for (size_t i = 0; i < 3; ++i) {
+    int32_t err = send_request(fd, query_list[i]);
+    printf("Sending query: %s\n", query_list[i]);
+    if (err) {
+      goto L_DONE;
+    }
   }
 
-  err = query(fd, (char *)"Hello 2");
-  if (err) {
-    goto L_DONE;
-  }
-
-  err = query(fd, (char *)"Hello 3");
-  if (err) {
-    goto L_DONE;
+  for (size_t i = 0; i < 3; ++i) {
+    printf("Reading response: %zu\n", i);
+    int32_t err = read_response(fd);
+    if (err) {
+      goto L_DONE;
+    }
   }
 
 L_DONE:
